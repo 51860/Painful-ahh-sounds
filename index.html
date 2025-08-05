@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Frequency Generator & Spectrum Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #00f5ff, #ff00aa, #ffaa00);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            letter-spacing: -2px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .main-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .control-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .control-label {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #00f5ff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .frequency-display {
+            background: rgba(0, 245, 255, 0.1);
+            border: 2px solid rgba(0, 245, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .frequency-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: #00f5ff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .frequency-unit {
+            font-size: 1rem;
+            opacity: 0.7;
+            margin-left: 5px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="number"] {
+            padding: 12px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            width: 150px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #00f5ff;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00f5ff, #ff00aa);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 245, 255, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(0, 245, 255, 0.6);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00f5ff, #ff00aa);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 245, 255, 0.4);
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+
+        .waveform-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .wave-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .wave-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .wave-btn.active {
+            background: linear-gradient(135deg, #00f5ff, #ff00aa);
+            border-color: transparent;
+            box-shadow: 0 4px 20px rgba(0, 245, 255, 0.3);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: white;
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-play:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 255, 136, 0.4);
+        }
+
+        .btn-play.playing {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            animation: pulse 2s infinite;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff4757, #ff3742);
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255, 71, 87, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .frequency-info {
+            text-align: center;
+        }
+
+        .frequency-category {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ffaa00, #ff6b6b);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .frequency-description {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .presets-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #00f5ff;
+        }
+
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .preset-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preset-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(255, 0, 170, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .preset-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 245, 255, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 245, 255, 0.2);
+        }
+
+        .preset-card:hover::before {
+            opacity: 1;
+        }
+
+        .preset-freq {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #00f5ff;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            position: relative;
+            z-index: 1;
+        }
+
+        .preset-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .preset-desc {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            line-height: 1.4;
+            position: relative;
+            z-index: 1;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+            border: 2px solid rgba(255, 193, 7, 0.4);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .warning-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .spectral-viz {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .viz-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #00f5ff;
+        }
+
+        .frequency-spectrum {
+            height: 100px;
+            background: linear-gradient(90deg, 
+                #ff0000 0%, #ff8000 14%, #ffff00 28%, 
+                #80ff00 42%, #00ff00 57%, #00ff80 71%, 
+                #00ffff 85%, #0080ff 100%);
+            border-radius: 8px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .frequency-marker {
+            position: absolute;
+            top: -10px;
+            width: 3px;
+            height: 120px;
+            background: white;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            transition: left 0.3s ease;
+        }
+
+        .spectrum-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            opacity: 0.6;
+        }
+
+        @media (max-width: 768px) {
+            .control-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .main-panel {
+                padding: 25px;
+            }
+            
+            .control-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 250px;
+            }
+            
+            .presets-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎛️ Advanced Frequency Generator</h1>
+            <p class="subtitle">Explore the complete spectrum from DC to ultrasonic frequencies</p>
+        </div>
+
+        <div class="main-panel">
+            <div class="spectral-viz">
+                <div class="viz-title">Frequency Spectrum Visualization</div>
+                <div class="frequency-spectrum">
+                    <div class="frequency-marker" id="frequencyMarker"></div>
+                </div>
+                <div class="spectrum-labels">
+                    <span>0 Hz</span>
+                    <span>1 kHz</span>
+                    <span>10 kHz</span>
+                    <span>100 kHz</span>
+                    <span>1 MHz</span>
+                </div>
+            </div>
+
+            <div class="control-grid">
+                <div class="control-section">
+                    <div class="control-label">🎵 Frequency Control</div>
+                    <div class="frequency-display">
+                        <span class="frequency-value" id="frequencyDisplay">440</span>
+                        <span class="frequency-unit">Hz</span>
+                    </div>
+                    <div class="input-group">
+                        <div class="input-row">
+                            <input type="number" id="frequency" min="0.1" max="1000000" step="0.1" value="440">
+                            <span>Hz</span>
+                        </div>
+                        <input type="range" id="frequencySlider" min="1" max="100000" value="440" step="1">
+                        <div class="range-labels">
+                            <span>1 Hz</span>
+                            <span>100 kHz</span>
+                        </div>
+                    </div>
+                    
+                    <div class="control-label">🔊 Volume</div>
+                    <div class="input-group">
+                        <div class="input-row">
+                            <input type="range" id="volume" min="0" max="100" value="30">
+                            <span id="volumeDisplay">30%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <div class="control-label">🌊 Waveform</div>
+                    <div class="waveform-selector">
+                        <button class="wave-btn active" data-wave="sine">Sine</button>
+                        <button class="wave-btn" data-wave="square">Square</button>
+                        <button class="wave-btn" data-wave="sawtooth">Saw</button>
+                        <button class="wave-btn" data-wave="triangle">Triangle</button>
+                    </div>
+                    
+                    <div class="control-label">⚡ Quick Set</div>
+                    <div class="input-group">
+                        <select id="quickRange" style="padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); color: white; border: 2px solid rgba(255,255,255,0.1); width: 100%;">
+                            <option value="audio">Audio Range (20 Hz - 20 kHz)</option>
+                            <option value="extended">Extended Audio (1 Hz - 50 kHz)</option>
+                            <option value="ultrasonic">Ultrasonic (20 kHz - 200 kHz)</option>
+                            <option value="radio">Radio Frequency (100 kHz - 1 MHz)</option>
+                            <option value="full">Full Range (0.1 Hz - 1 MHz)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-buttons">
+                <button class="btn btn-play" id="playBtn">▶️ Generate Tone</button>
+                <button class="btn btn-stop" id="stopBtn">⏹️ Stop</button>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="frequency-info" id="frequencyInfo">
+                <div class="frequency-category">Musical Note: A4 (Concert Pitch)</div>
+                <div class="frequency-description">440 Hz is the standard tuning frequency for the musical note A above middle C. This frequency serves as the universal reference point for tuning musical instruments worldwide and is used in concert halls, recording studios, and musical education.</div>
+            </div>
+        </div>
+
+        <div class="presets-section">
+            <h2 class="section-title">🎯 Frequency Presets</h2>
+            <div class="presets-grid">
+                <div class="preset-card" data-freq="0.1">
+                    <div class="preset-freq">0.1 Hz</div>
+                    <div class="preset-name">Ultra Low Frequency</div>
+                    <div class="preset-desc">Extremely slow oscillation, used in geological monitoring</div>
+                </div>
+                <div class="preset-card" data-freq="7.83">
+                    <div class="preset-freq">7.83 Hz</div>
+                    <div class="preset-name">Schumann Resonance</div>
+                    <div class="preset-desc">Earth's electromagnetic frequency, "Earth's heartbeat"</div>
+                </div>
+                <div class="preset-card" data-freq="40">
+                    <div class="preset-freq">40 Hz</div>
+                    <div class="preset-name">Gamma Brainwave</div>
+                    <div class="preset-desc">Associated with consciousness and cognitive function</div>
+                </div>
+                <div class="preset-card" data-freq="440.00">
+                    <div class="preset-freq">440.00 Hz</div>
+                    <div class="preset-name">A4 Concert Pitch</div>
+                    <div class="preset-desc">International standard tuning reference</div>
+                </div>
+                <div class="preset-card" data-freq="432.00">
+                    <div class="preset-freq">432.00 Hz</div>
+                    <div class="preset-name">Alternative A4</div>
+                    <div class="preset-desc">"Natural" tuning frequency, claimed healing properties</div>
+                </div>
+                <div class="preset-card" data-freq="528.00">
+                    <div class="preset-freq">528.00 Hz</div>
+                    <div class="preset-name">Love Frequency</div>
+                    <div class="preset-desc">Solfeggio frequency, "miracle tone" for DNA repair</div>
+                </div>
+                <div class="preset-card" data-freq="1000.00">
+                    <div class="preset-freq">1000.00 Hz</div>
+                    <div class="preset-name">Reference Tone</div>
+                    <div class="preset-desc">Standard audio testing and calibration frequency</div>
+                </div>
+                <div class="preset-card" data-freq="2000">
+                    <div class="preset-freq">2000 Hz</div>
+                    <div class="preset-name">Speech Clarity</div>
+                    <div class="preset-desc">Optimal frequency for human speech intelligibility</div>
+                </div>
+                <div class="preset-card" data-freq="8000">
+                    <div class="preset-freq">8000 Hz</div>
+                    <div class="preset-name">Presence Boost</div>
+                    <div class="preset-desc">Adds clarity and definition to audio</div>
+                </div>
+                <div class="preset-card" data-freq="15000">
+                    <div class="preset-freq">15 kHz</div>
+                    <div class="preset-name">Youth Test</div>
+                    <div class="preset-desc">High frequency hearing test for young adults</div>
+                </div>
+                <div class="preset-card" data-freq="19000">
+                    <div class="preset-freq">19 kHz</div>
+                    <div class="preset-name">Dog Whistle</div>
+                    <div class="preset-desc">Near ultrasonic, audible to most dogs and cats</div>
+                </div>
+                <div class="preset-card" data-freq="25000">
+                    <div class="preset-freq">25 kHz</div>
+                    <div class="preset-name">Ultrasonic</div>
+                    <div class="preset-desc">Beyond human hearing, used in pest control</div>
+                </div>
+                <div class="preset-card" data-freq="40000">
+                    <div class="preset-freq">40 kHz</div>
+                    <div class="preset-name">Bat Echolocation</div>
+                    <div class="preset-desc">Frequency used by bats for navigation</div>
+                </div>
+                <div class="preset-card" data-freq="100000">
+                    <div class="preset-freq">100 kHz</div>
+                    <div class="preset-name">Radio Frequency</div>
+                    <div class="preset-desc">AM radio band, medical ultrasonics</div>
+                </div>
+                <div class="preset-card" data-freq="500000">
+                    <div class="preset-freq">500 kHz</div>
+                    <div class="preset-name">Medium Wave</div>
+                    <div class="preset-desc">AM radio broadcasting frequency</div>
+                </div>
+                <div class="preset-card" data-freq="1000000">
+                    <div class="preset-freq">1 MHz</div>
+                    <div class="preset-name">Megahertz</div>
+                    <div class="preset-desc">Industrial heating, radio communications</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="warning">
+            <div class="warning-icon">⚠️</div>
+            <strong>For Clean Tones:</strong> If you hear beating or pulsing, try closing other audio applications, using headphones, or refreshing the page. The generator produces mathematically precise frequencies - beating usually indicates interference from other sound sources or system audio.
+            <br><br>
+            <strong>Safety Notice:</strong> This generator can produce frequencies up to 1 MHz. Use appropriate volume levels to protect your hearing. Ultrasonic frequencies may not be audible but can still affect sensitive equipment.
+        </div>
+    </div>
+
+    <script>
+        let audioContext;
+        let oscillator;
+        let gainNode;
+        let isPlaying = false;
+        let currentWaveform = 'sine';
+        let mouseTimeout;
+        let lastMouseMove = Date.now();
+
+        // Mouse movement tracking for auto-stop
+        function resetMouseTimer() {
+            lastMouseMove = Date.now();
+            if (mouseTimeout) {
+                clearTimeout(mouseTimeout);
+            }
+            
+            if (isPlaying) {
+                mouseTimeout = setTimeout(() => {
+                    if (isPlaying && Date.now() - lastMouseMove >= 5000) {
+                        console.log('Auto-stopping tone after 5 seconds of inactivity');
+                        stopTone();
+                        
+                        // Show brief notification
+                        const notification = document.createElement('div');
+                        notification.textContent = 'Tone stopped automatically after 5 seconds of inactivity';
+                        notification.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            background: rgba(255, 193, 7, 0.9);
+                            color: black;
+                            padding: 15px 20px;
+                            border-radius: 10px;
+                            font-weight: bold;
+                            z-index: 10000;
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                        `;
+                        document.body.appendChild(notification);
+                        
+                        setTimeout(() => {
+                            if (notification.parentNode) {
+                                notification.parentNode.removeChild(notification);
+                            }
+                        }, 3000);
+                    }
+                }, 5000);
+            }
+        }
+
+        // Track mouse movement
+        document.addEventListener('mousemove', resetMouseTimer);
+        document.addEventListener('mousedown', resetMouseTimer);
+        document.addEventListener('keydown', resetMouseTimer);
+
+        // Initialize audio context with optimal settings for stability
+        function initAudio() {
+            if (!audioContext) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                try {
+                    // Create with specific settings for maximum stability
+                    audioContext = new AudioContextClass({
+                        sampleRate: 44100, // Use standard CD quality for maximum compatibility
+                        latencyHint: 'interactive'
+                    });
+                } catch (e) {
+                    audioContext = new AudioContextClass();
+                }
+                
+                console.log(`Audio Context: ${audioContext.sampleRate}Hz, State: ${audioContext.state}`);
+            }
+            
+            // Ensure context is running
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }
+
+        // Get DOM elements
+        const frequencyInput = document.getElementById('frequency');
+        const frequencySlider = document.getElementById('frequencySlider');
+        const frequencyDisplay = document.getElementById('frequencyDisplay');
+        const frequencyMarker = document.getElementById('frequencyMarker');
+        const volumeSlider = document.getElementById('volume');
+        const volumeDisplay = document.getElementById('volumeDisplay');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const frequencyInfo = document.getElementById('frequencyInfo');
+        const presetCards = document.querySelectorAll('.preset-card');
+        const waveButtons = document.querySelectorAll('.wave-btn');
+        const quickRange = document.getElementById('quickRange');
+
+        // Frequency input and slider sync
+        frequencyInput.addEventListener('input', () => {
+            let freq = parseFloat(frequencyInput.value) || 440;
+            freq = Math.max(0.1, Math.min(1000000, freq));
+            updateFrequencyDisplay(freq);
+            updateSliderPosition(freq);
+            updateFrequencyInfo(freq);
+            updateSpectrumMarker(freq);
+            if (isPlaying) {
+                updateFrequency(freq);
+            }
+        });
+
+        frequencySlider.addEventListener('input', () => {
+            const freq = parseFloat(frequencySlider.value);
+            frequencyInput.value = freq;
+            updateFrequencyDisplay(freq);
+            updateFrequencyInfo(freq);
+            updateSpectrumMarker(freq);
+            if (isPlaying) {
+                updateFrequency(freq);
+            }
+        });
+
+        // Volume control
+        volumeSlider.addEventListener('input', () => {
+            const volume = volumeSlider.value;
+            volumeDisplay.textContent = volume + '%';
+            if (isPlaying && gainNode) {
+                gainNode.gain.value = volume / 100 * 0.2; // Max 20% for safety
+            }
+        });
+
+        // Waveform selection
+        waveButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                waveButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentWaveform = btn.dataset.wave;
+                if (isPlaying && oscillator) {
+                    oscillator.type = currentWaveform;
+                }
+            });
+        });
+
+        // Quick range selection
+        quickRange.addEventListener('change', () => {
+            const range = quickRange.value;
+            let min, max;
+            
+            switch(range) {
+                case 'audio':
+                    min = 20; max = 20000;
+                    break;
+                case 'extended':
+                    min = 1; max = 50000;
+                    break;
+                case 'ultrasonic':
+                    min = 20000; max = 200000;
+                    break;
+                case 'radio':
+                    min = 100000; max = 1000000;
+                    break;
+                case 'full':
+                default:
+                    min = 1; max = 1000000;
+                    break;
+            }
+            
+            frequencySlider.min = min;
+            frequencySlider.max = max;
+            
+            // Update range labels
+            const labels = document.querySelector('.range-labels');
+            labels.innerHTML = `<span>${formatFrequency(min)}</span><span>${formatFrequency(max)}</span>`;
+        });
+
+        // Play and stop buttons
+        playBtn.addEventListener('click', () => {
+            initAudio();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            playTone();
+        });
+
+        stopBtn.addEventListener('click', stopTone);
+
+        // Preset cards
+        presetCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const freq = parseFloat(card.dataset.freq);
+                frequencyInput.value = freq;
+                updateFrequencyDisplay(freq);
+                updateSliderPosition(freq);
+                updateFrequencyInfo(freq);
+                updateSpectrumMarker(freq);
+                if (isPlaying) {
+                    updateFrequency(freq);
+                }
+            });
+        });
+
+        function updateFrequencyDisplay(freq) {
+            frequencyDisplay.textContent = formatFrequency(freq);
+        }
+
+        function formatFrequency(freq) {
+            if (freq >= 1000000) {
+                return (freq / 1000000).toFixed(2) + 'M';
+            } else if (freq >= 1000) {
+                return (freq / 1000).toFixed(1) + 'k';
+            } else if (freq >= 1) {
+                return freq.toFixed(1);
+            } else {
+                return freq.toFixed(2);
+            }
+        }
+
+        function updateSliderPosition(freq) {
+            const min = parseFloat(frequencySlider.min);
+            const max = parseFloat(frequencySlider.max);
+            if (freq >= min && freq <= max) {
+                frequencySlider.value = freq;
+            }
+        }
+
+        function updateSpectrumMarker(freq) {
+            // Position marker on logarithmic scale from 0.1 Hz to 1 MHz
+            const minLog = Math.log10(0.1);
+            const maxLog = Math.log10(1000000);
+            const freqLog = Math.log10(Math.max(0.1, freq));
+            const position = ((freqLog - minLog) / (maxLog - minLog)) * 100;
+            frequencyMarker.style.left = Math.min(97, Math.max(0, position)) + '%';
+        }
+
+        function playTone() {
+            if (isPlaying) stopTone();
+
+            // Ensure audio context is properly initialized and running
+            initAudio();
+            if (audioContext.state !== 'running') {
+                audioContext.resume().then(() => {
+                    playTone(); // Retry after context is running
+                });
+                return;
+            }
+
+            const frequency = parseFloat(frequencyInput.value) || 440;
+            const volume = volumeSlider.value / 100; // Full device volume range
+
+            // Check frequency bounds
+            const nyquistFreq = audioContext.sampleRate / 2;
+            if (frequency > nyquistFreq - 100) { // Leave 100Hz buffer
+                alert(`Frequency too high for clean playback. Max recommended: ${Math.floor(nyquistFreq - 100)}Hz`);
+                return;
+            }
+
+            // Create oscillator with stable settings
+            oscillator = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+
+            // Connect audio graph
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Set frequency with high precision
+            const preciseFreq = Math.round(frequency * 1000) / 1000; // Round to 3 decimal places
+            oscillator.frequency.value = preciseFreq;
+            
+            // Set waveform
+            oscillator.type = currentWaveform;
+
+            // Gradual volume fade-in to prevent any startup artifacts
+            gainNode.gain.value = 0;
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.1);
+
+            // Start oscillator at precise time
+            const startTime = audioContext.currentTime + 0.01;
+            oscillator.start(startTime);
+            
+            isPlaying = true;
+            playBtn.textContent = '🔊 Playing...';
+            playBtn.classList.add('playing');
+
+            // Start mouse inactivity timer
+            resetMouseTimer();
+
+            console.log(`Playing: ${preciseFreq}Hz, Volume: ${Math.round(volume * 100)}%, Waveform: ${currentWaveform}`);
+        }
+
+        function stopTone() {
+            if (oscillator && gainNode && audioContext) {
+                try {
+                    // Quick but smooth fade out
+                    const fadeTime = 0.05;
+                    gainNode.gain.setValueAtTime(gainNode.gain.value, audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + fadeTime);
+                    
+                    // Stop oscillator after fade
+                    oscillator.stop(audioContext.currentTime + fadeTime);
+                    
+                    console.log('Tone stopped cleanly');
+                } catch (e) {
+                    console.log('Oscillator already stopped');
+                }
+                
+                // Clean up immediately
+                oscillator = null;
+                gainNode = null;
+            }
+            
+            // Clear mouse timer
+            if (mouseTimeout) {
+                clearTimeout(mouseTimeout);
+                mouseTimeout = null;
+            }
+            
+            isPlaying = false;
+            playBtn.textContent = '▶️ Generate Tone';
+            playBtn.classList.remove('playing');
+        }
+
+        function updateFrequency(frequency) {
+            if (oscillator && audioContext && audioContext.state === 'running') {
+                const nyquistFreq = audioContext.sampleRate / 2;
+                const safeFreq = Math.min(Math.max(frequency, 0.1), nyquistFreq - 100);
+                const preciseFreq = Math.round(safeFreq * 1000) / 1000;
+                
+                // Use immediate value setting for stable frequency changes
+                oscillator.frequency.value = preciseFreq;
+                
+                // Reset mouse timer when frequency is updated
+                resetMouseTimer();
+                
+                console.log(`Frequency updated to: ${preciseFreq}Hz`);
+            }
+        }
+
+        function updateFrequencyInfo(frequency) {
+            let category = '';
+            let description = '';
+
+            if (frequency < 0.1) {
+                category = 'DC / Static';
+                description = 'Direct current or static frequency. Not audible and used primarily in electrical engineering and power systems.';
+            } else if (frequency < 1) {
+                category = 'Ultra Low Frequency (ULF)';
+                description = 'Extremely low frequencies used in submarine communication, geological monitoring, and brain-computer interfaces. These frequencies can penetrate deep into materials and travel vast distances.';
+            } else if (frequency < 3) {
+                category = 'Super Low Frequency (SLF)';
+                description = 'Used for communication with submarines underwater. These frequencies can penetrate seawater and are essential for naval operations.';
+            } else if (frequency < 20) {
+                category = 'Infrasound';
+                description = 'Below human hearing range but can be felt as vibrations. Produced by natural phenomena like earthquakes, ocean waves, volcanoes, and large animals like elephants for long-distance communication. Also used in monitoring nuclear tests.';
+            } else if (frequency < 60) {
+                category = 'Sub-bass';
+                description = 'The lowest audible frequencies that are felt more than heard. Essential for music reproduction, movie sound effects, and creating immersive audio experiences. Requires specialized subwoofers to reproduce accurately.';
+            } else if (frequency < 250) {
+                category = 'Bass';
+                description = 'Low frequencies that provide warmth, fullness, and power to music. Contains fundamental frequencies of bass instruments, kick drums, and low male voices. Critical for genres like electronic music, hip-hop, and orchestral music.';
+            } else if (frequency < 500) {
+                category = 'Low Midrange';
+                description = 'Contains fundamental frequencies of most musical instruments and the lower harmonics of vocals. Provides body and warmth to audio. Important for speech intelligibility and musical instrument recognition.';
+            } else if (frequency < 2000) {
+                category = 'Midrange';
+                description = 'Critical frequency range for human communication and music. Contains most vocal fundamentals and consonants essential for speech understanding. This is where the human ear is most sensitive.';
+            } else if (frequency < 4000) {
+                category = 'Upper Midrange';
+                description = 'Important for speech clarity and musical presence. Contains vocal formants and instrument attack transients. Excessive energy here can sound harsh, but proper balance adds clarity and definition.';
+            } else if (frequency < 8000) {
+                category = 'Presence Range';
+                description = 'Adds clarity, intelligibility, and "presence" to vocals and instruments. Critical for speech recognition systems and hearing aids. Helps sounds cut through dense mixes in music production.';
+            } else if (frequency < 16000) {
+                category = 'Brilliance / Treble';
+                description = 'Adds sparkle, air, and detail to audio. Contains cymbal crashes, vocal sibilants (s, sh, t sounds), and harmonic overtones that give instruments their unique character and spatial information.';
+            } else if (frequency < 20000) {
+                category = 'Extended High Frequency';
+                description = 'Near the upper limit of human hearing. Young people can hear up to 20kHz, but this ability decreases with age and noise exposure. Important for audio equipment testing and high-resolution audio formats.';
+            } else if (frequency < 50000) {
+                category = 'Ultrasonic (Low)';
+                description = 'Above human hearing but audible to many animals. Used in dog whistles (16-22kHz), pest control devices, motion sensors, and some medical applications. Bats use frequencies up to 200kHz for echolocation.';
+            } else if (frequency < 200000) {
+                category = 'Ultrasonic (High)';
+                description = 'Used in medical ultrasonography, industrial cleaning, welding, and material testing. Dolphins use frequencies up to 150kHz for echolocation. Can cause heating in tissues at high power levels.';
+            } else if (frequency < 1000000) {
+                category = 'Radio Frequency (LF/MF)';
+                description = 'Enters radio frequency spectrum. Used for AM radio broadcasting (530-1700kHz), maritime and aeronautical navigation, and amateur radio. These frequencies can travel long distances, especially at night.';
+            } else {
+                category = 'Radio Frequency (HF+)';
+                description = 'High-frequency radio spectrum used for shortwave broadcasting, amateur radio, military communications, and various industrial applications like dielectric heating and plasma generation.';
+            }
+
+            // Add musical note information for audible frequencies
+            if (frequency >= 82 && frequency <= 4186) {
+                const noteInfo = getMusicalNote(frequency);
+                category += ` - ${noteInfo}`;
+            }
+
+            // Add wavelength information
+            const wavelength = getWavelength(frequency);
+            if (wavelength) {
+                description += ` Wavelength: ${wavelength}.`;
+            }
+
+            document.querySelector('.frequency-category').textContent = category;
+            document.querySelector('.frequency-description').textContent = description;
+        }
+
+        function getMusicalNote(frequency) {
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            
+            // Use precise A4 = 440Hz as reference (international standard)
+            const A4_FREQ = 440.0;
+            const A4_NOTE_NUMBER = 69; // MIDI note number for A4
+            
+            // Calculate note number using precise logarithm
+            const noteNumber = Math.round(12 * Math.log2(frequency / A4_FREQ) + A4_NOTE_NUMBER);
+            
+            // Calculate octave and note index
+            const octave = Math.floor(noteNumber / 12) - 1;
+            const noteIndex = noteNumber % 12;
+            const note = notes[noteIndex];
+            
+            // Calculate precise frequency for this note
+            const exactFreq = A4_FREQ * Math.pow(2, (noteNumber - A4_NOTE_NUMBER) / 12);
+            
+            // Calculate cents deviation (1200 cents = 1 octave, 100 cents = 1 semitone)
+            const cents = Math.round(1200 * Math.log2(frequency / exactFreq));
+            const centsStr = cents !== 0 ? ` (${cents > 0 ? '+' : ''}${cents} cents)` : ' (perfect pitch)';
+            
+            return `${note}${octave}${centsStr}`;
+        }
+
+        function getWavelength(frequency) {
+            const speedOfSound = 343; // m/s at 20°C
+            const speedOfLight = 299792458; // m/s
+            
+            if (frequency < 20000) {
+                // Sound wavelength
+                const wavelength = speedOfSound / frequency;
+                if (wavelength >= 1) {
+                    return `${wavelength.toFixed(2)} meters (sound)`;
+                } else if (wavelength >= 0.01) {
+                    return `${(wavelength * 100).toFixed(1)} cm (sound)`;
+                } else {
+                    return `${(wavelength * 1000).toFixed(1)} mm (sound)`;
+                }
+            } else {
+                // Electromagnetic wavelength
+                const wavelength = speedOfLight / frequency;
+                if (wavelength >= 1000) {
+                    return `${(wavelength / 1000).toFixed(2)} km (EM)`;
+                } else if (wavelength >= 1) {
+                    return `${wavelength.toFixed(2)} meters (EM)`;
+                } else if (wavelength >= 0.01) {
+                    return `${(wavelength * 100).toFixed(1)} cm (EM)`;
+                } else if (wavelength >= 0.00001) {
+                    return `${(wavelength * 1000).toFixed(1)} mm (EM)`;
+                } else {
+                    return `${(wavelength * 1000000).toFixed(1)} μm (EM)`;
+                }
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPlaying) {
+                    stopTone();
+                } else {
+                    playBtn.click();
+                }
+            } else if (e.code === 'Escape') {
+                stopTone();
+            }
+        });
+
+        // Initialize
+        updateFrequencyInfo(440);
+        updateSpectrumMarker(440);
+
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isPlaying) {
+                stopTone();
+            }
+        });
+
+        // Prevent audio context issues on mobile
+        document.addEventListener('touchstart', initAudio, { once: true });
+        document.addEventListener('click', initAudio, { once: true });
+    </script>
+</body>
+</html>
+                
